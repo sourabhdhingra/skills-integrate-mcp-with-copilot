@@ -3,138 +3,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const activitySelect = document.getElementById("activity");
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
-  
-  // Authentication elements
-  const userButton = document.getElementById("user-button");
-  const loginModal = document.getElementById("login-modal");
-  const loginForm = document.getElementById("login-form");
-  const loginMessage = document.getElementById("login-message");
-  const closeModal = document.querySelector(".close");
-  const userInfo = document.getElementById("user-info");
-  const teacherName = document.getElementById("teacher-name");
-  const logoutButton = document.getElementById("logout-button");
-  const signupContainer = document.getElementById("signup-container");
-  
-  // Authentication state
-  let authToken = localStorage.getItem('authToken');
-  
-  // Check authentication on load
-  if (authToken) {
-    verifyAuth();
-  }
-  
-  // Open login modal
-  userButton.addEventListener("click", () => {
-    if (authToken) {
-      // Already logged in, show user info
-      return;
-    }
-    loginModal.classList.remove("hidden");
-  });
-  
-  // Close modal
-  closeModal.addEventListener("click", () => {
-    loginModal.classList.add("hidden");
-    loginMessage.classList.add("hidden");
-  });
-  
-  // Close modal when clicking outside
-  window.addEventListener("click", (event) => {
-    if (event.target === loginModal) {
-      loginModal.classList.add("hidden");
-      loginMessage.classList.add("hidden");
-    }
-  });
-  
-  // Handle login
-  loginForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    
-    const username = document.getElementById("username").value;
-    const password = document.getElementById("password").value;
-    
-    try {
-      const response = await fetch(
-        `/auth/login?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`,
-        { method: "POST" }
-      );
-      
-      const result = await response.json();
-      
-      if (response.ok) {
-        authToken = result.token;
-        localStorage.setItem('authToken', authToken);
-        teacherName.textContent = `Welcome, ${result.name}`;
-        userInfo.classList.remove("hidden");
-        userButton.classList.add("hidden");
-        signupContainer.classList.remove("hidden");
-        loginModal.classList.add("hidden");
-        loginForm.reset();
-        
-        // Refresh activities to show delete buttons
-        fetchActivities();
-      } else {
-        loginMessage.textContent = result.detail || "Login failed";
-        loginMessage.className = "error";
-        loginMessage.classList.remove("hidden");
-      }
-    } catch (error) {
-      loginMessage.textContent = "Login failed. Please try again.";
-      loginMessage.className = "error";
-      loginMessage.classList.remove("hidden");
-      console.error("Error logging in:", error);
-    }
-  });
-  
-  // Handle logout
-  logoutButton.addEventListener("click", async () => {
-    try {
-      await fetch("/auth/logout", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${authToken}`
-        }
-      });
-    } catch (error) {
-      console.error("Error logging out:", error);
-    } finally {
-      authToken = null;
-      localStorage.removeItem('authToken');
-      userInfo.classList.add("hidden");
-      userButton.classList.remove("hidden");
-      signupContainer.classList.add("hidden");
-      
-      // Refresh activities to hide delete buttons
-      fetchActivities();
-    }
-  });
-  
-  // Verify authentication
-  async function verifyAuth() {
-    try {
-      const response = await fetch("/auth/verify", {
-        headers: {
-          "Authorization": `Bearer ${authToken}`
-        }
-      });
-      
-      const result = await response.json();
-      
-      if (result.authenticated) {
-        teacherName.textContent = `Welcome, ${result.name}`;
-        userInfo.classList.remove("hidden");
-        userButton.classList.add("hidden");
-        signupContainer.classList.remove("hidden");
-      } else {
-        authToken = null;
-        localStorage.removeItem('authToken');
-      }
-    } catch (error) {
-      console.error("Error verifying auth:", error);
-      authToken = null;
-      localStorage.removeItem('authToken');
-    }
-  }
 
   // Function to fetch activities from API
   async function fetchActivities() {
@@ -153,7 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const spotsLeft =
           details.max_participants - details.participants.length;
 
-        // Create participants HTML with delete icons (only for authenticated teachers)
+        // Create participants HTML with delete icons instead of bullet points
         const participantsHTML =
           details.participants.length > 0
             ? `<div class="participants-section">
@@ -162,7 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 ${details.participants
                   .map(
                     (email) =>
-                      `<li><span class="participant-email">${email}</span>${authToken ? `<button class="delete-btn" data-activity="${name}" data-email="${email}">❌</button>` : ''}</li>`
+                      `<li><span class="participant-email">${email}</span><button class="delete-btn" data-activity="${name}" data-email="${email}">❌</button></li>`
                   )
                   .join("")}
               </ul>
@@ -188,12 +56,10 @@ document.addEventListener("DOMContentLoaded", () => {
         activitySelect.appendChild(option);
       });
 
-      // Add event listeners to delete buttons (only if authenticated)
-      if (authToken) {
-        document.querySelectorAll(".delete-btn").forEach((button) => {
-          button.addEventListener("click", handleUnregister);
-        });
-      }
+      // Add event listeners to delete buttons
+      document.querySelectorAll(".delete-btn").forEach((button) => {
+        button.addEventListener("click", handleUnregister);
+      });
     } catch (error) {
       activitiesList.innerHTML =
         "<p>Failed to load activities. Please try again later.</p>";
@@ -214,9 +80,6 @@ document.addEventListener("DOMContentLoaded", () => {
         )}/unregister?email=${encodeURIComponent(email)}`,
         {
           method: "DELETE",
-          headers: {
-            "Authorization": `Bearer ${authToken}`
-          }
         }
       );
 
@@ -261,9 +124,6 @@ document.addEventListener("DOMContentLoaded", () => {
         )}/signup?email=${encodeURIComponent(email)}`,
         {
           method: "POST",
-          headers: {
-            "Authorization": `Bearer ${authToken}`
-          }
         }
       );
 
